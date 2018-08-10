@@ -53,19 +53,14 @@ Data Driven Inverse Kinematics using Local Models
 
 
 \begin{abstract}
-
-\blindtext[2]
+Soft robotics is the study of robots made of highly compliant materials. Compared to rigid robots, soft robots are advantageous in terms of flexibility, safety and adaptability. New methods for robust, accurate soft-robotic control are extensively researched in a field where traditional robotics theory does not apply. Current state of the art uses simulation on digital twins to find optimal configurations of soft robots. This generalizes well, but suffers from the reality gap and a large number of hyper parameters. We have taken a direct data-driven approach to learn the kinematics of the three-dimensional shape of a robot, by using visual markers. This brings us closer to the data. Additionally, this method erases the requirement of prior information about the robot at hand, as the model is oblivious to the design of the robot and type of actuation system. This also allows for erroneous manufacturing, since we fit our models to what we observe and not to its ideal representation. We have created a highly versatile and inexpensive learning environment, where we can collect data and perform experiments on self-made soft robots. Shape vectors are extracted from multiple RGB-D sensors at different viewpoints. Polynomial regression is used to learn the kinematics of the shape with respect to the configuration parameters. The inverse kinematics problem is solved by optimization methods to produce the optimal configuration for a desired pose. By using multiple, lower ordered models opposed to one global, high ordered model, we reduce the required data quantity, time complexity and memory complexity. Validation of the models shows that the mean configuration error is typically smaller than 10 motor steps, corresponding to less than 0.6 mm of cable. Lastly, two cable driven soft robots are tested in a real time application, demonstrating that this approach is feasible at least for soft robots with relatively low complexity.
 
 \end{abstract}
 
 
 
 \section{Introduction}
-\blindtext[5]
-\clearpage
-
-\section{LearningCube}
-\blindtext[1]
+\blindtext[3]
 \begin{figure}[htpb]
       \centering
       \framebox{\parbox{3in}{
@@ -73,21 +68,40 @@ Data Driven Inverse Kinematics using Local Models
         \caption{Overview of the LearningCube}
         \label{fig:cube}
 \end{figure}
+\clearpage
 
+\section{LearningCube}
 \begin{figure}[htpb]
       \centering
       \framebox{\parbox{3in}{
         \includegraphics[width=3in]{figures/setup.pdf}}}
-        \caption{Overview of the LearningCube}
-        \label{fig:cube}
+        \caption{Sensor and actuator integration}
+        \label{fig:setup}
 \end{figure}
-\blindtext[2]
+
+Since we chose a data driven approach, we need to be able to collect large amounts of high quality data in a reasonable amount of time. We also need a way to interact with the soft robots after we have trained them. Therefore, we first designed and built a platform for data acquisition and experiments. The LearningCube combines depth sensors, motors and robots (see figure \ref{fig:cube}). It consists of a wooden box with aluminum frames. The purpose of the box is to have a rigid base to mount motors and soft robots, but also to block out light pollution and other sources of external noise. Uniform light conditions are provided by LED-strips on all walls. To make segmentation of RGB-D data easy, the base of the box is painted in diffuse black. The aluminum frame lets us mount the cameras almost anywhere without obstructing, which is important for the data quality. 
+
+To control the cable driven soft robots, we need to be able to accurately control the length of the cables. For this purpose, we use 2-phase mercury stepper motors with 1.8 degree steps. The radius of the motor shaft is 2 mm, so one revolution will tighten/loosen the cable by 12.5 mm and one step only by 0.06 mm. Each motor is connected to a stepper motor driver that is used to control speed, acceleration and absolute position of the shaft. The motor drivers are daisy chained to an Arduino, which makes creating a setup with multiple motors easy. We use Intel's RealsSense D415 sensors to capture depth and colour data. Figure \ref{fig:setup} depicts how the Arduino and the depth sensors are integrated in the LearningCube. 
+
+During the training phase, the robots are equipped with visual markers. For each configuration, $\vec{\alpha}$, we want to extract a shape vector from these markers. This is done by segmenting visual markers from the colour images and extracting the corresponding x,y,z coordinates from the point cloud. The result is a shape vector (see figure \ref{fig:shape}).
+
+A point cloud generated from a depth sensor can only contain points on the surface of the object that is visible for the sensor. One can, however, make a more complete reconstruction of the object by merging point clouds from several sensors with different viewpoints. Under the assumption that noise and degradation is negligible, two corresponding points, as seen from two sensors, are related by a rigid transformation. The translation and rotation can be found by least squares fitting of control points from each coordinate system (CITE). As control points, we use detected centroids of fuss-balls, due to high production quality and equal appearance from all angles (see figure \ref{fig:ball}). 
+Point correspondences between points in the respective coordinate systems have to, however, be determined before applying the least squares method. This is done by searching for the permutation of detected points in coordinate system B, as:
+$$
+    \pi^* = \arg \min_{\pi} \frac{1}{N}\sum_{i=1}^N \|p^A_n- (R(\pi)p^B_{\pi(n)} + T(\pi))\|^2
+$$
+where ($R(\pi), T(\pi))$ is the rigid transformation between $p^A $ and $p^B_{\pi}$.
+
+After extracting a shape vector from each sensor, we merge them such that visual markers that are represented in both shape vectors are averaged out. Markers that are common to both sensors are detected by a lower threshold on pairwise marker-distance (see figure \ref{fig:two}).
+
+This process is repeated for each configuration in the sampling space and for each sampled configuration, k, we get a set of points, $p^k$. The points in $p^k$ are not in any particular order, which means that there is no guarantee that $p_i^k$ and $p_i^{k+1}$ refer to the same physical marker. Moreover, the size of the points sets may differ from configuration to configuration due to erroneous segmentation or noise in the depth data. This is solved by sorting all point sets from configurations $k=(2,3,...,K)$ with respect to the order of the first point set $p^1$. This is done by greedily linking markers with the smallest displacement. Missing values are approximated as a gaussian weighted mean of nearby marker displacements and false positives are detected as frequently approximated markers. 
+
 \begin{figure}[htpb]
       \centering
       \framebox{\parbox{3in}{
         \includegraphics[width=3in]{figures/postiver.png}}}
-        \caption{Overview of the LearningCube}
-        \label{fig:cube}
+        \caption{Shape representation of soft robot}
+        \label{fig:shape}
 \end{figure}
 
  \begin{figure}[htpb]
@@ -102,7 +116,7 @@ Data Driven Inverse Kinematics using Local Models
                 \includegraphics[width=\textwidth]{figures/calib2.pdf}
         \end{subfigure}}}
         \caption{Calibration balls seen from two sensors}
-        \label{fig:calib}
+        \label{fig:ball}
 \end{figure}
 
  \begin{figure}[htpb]
@@ -116,8 +130,8 @@ Data Driven Inverse Kinematics using Local Models
                 \centering
                 \includegraphics[width=\textwidth]{figures/common1.png}
         \end{subfigure}}}
-        \caption{Calibration balls seen from two sensors}
-        \label{fig:calib}
+        \caption{Common markers taken into account}
+        \label{fig:two}
 \end{figure}
 
 \clearpage
